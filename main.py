@@ -61,7 +61,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = Session()
     if not db.query(User).filter_by(user_id=update.effective_user.id).first():
         db.add(User(user_id=update.effective_user.id))
-    await update.message.reply_text('Добро пожаловать! Отправьте изображение для предложения поста.')
+    await update.message.reply_text('Добро пожаловать! Отправьте свой гастрономический шедевр для предложения поста в @GastroGeek. Фото принимается исключительно со вспышкой и смешной подписью.')
     db.commit()
 
 
@@ -89,6 +89,7 @@ async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 admin.user_id, open(post.attachment_path, 'rb'),
                 caption=post.text, reply_markup=InlineKeyboardMarkup(buttons)
             )
+            print(f'[Predlozhka][photo_handler] Sent post to admin {admin.user_id}.')
             post.messages.append({'admin_id': admin.user_id, 'message_id': message.message_id})
         except Exception as e:
             print(f'[photo_handler][ERROR] Failed to send to admin {admin.user_id}: {e}')
@@ -96,7 +97,7 @@ async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.commit()
     db.close()
 
-    await update.message.reply_text('Пост отправлен администраторам.')
+    await update.message.reply_text('Ваш гастрономический шедевр отправлен на проверку администраторам.')
 
 
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -119,7 +120,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 try:
                     await context.bot.send_photo(target_channel, open(post.attachment_path, 'rb'), caption=post.text)
                     await update.callback_query.answer('✅ Пост опубликован')
-                    await context.bot.send_message(post.owner_id, 'Ваш пост опубликован.')
+                    await context.bot.send_message(post.owner_id, 'Ваш гастрономический шедевр опубликован в GastroGeek.')
 
                     # Удаляем кнопки из сообщения администратора
                     for message_data in post.messages:
@@ -153,7 +154,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         logging.error(
                             f'Error while removing buttons for {message_data["admin_id"]}: {e}')  # Заменено на logging
 
-                await update.callback_query.answer('Пост отклонен')
+                await update.callback_query.answer('Ваш пост отклонен по причине отсутствия смешной подписи или фото без вспышки.')
 
                 # Удаление временного файла
                 if os.path.exists(post.attachment_path):
